@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aditya Ray | Lens & Logic</title>
+    
+    <!-- 1. FONTS & ICONS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Courier+Prime&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 2. THREE.JS (For 3D Background) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        /* ============================
+           CORE VARIABLES & RESET
+           ============================ */
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-color: #00f2ff; /* Cyan/Teal Neon */
+            --accent-glow: rgba(0, 242, 255, 0.4);
+            --secondary-text: #8892b0;
+            --card-bg: rgba(20, 20, 20, 0.8);
+            --font-main: 'Montserrat', sans-serif;
+            --font-code: 'Courier Prime', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+
+        /* ============================
+           LIGHT ANIMATION FX
+           ============================ */
+        
+        /* 1. Cursor Spotlight */
+        .cursor-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.08) 0%, rgba(0,0,0,0) 70%); /* Lowered opacity for cleaner look */
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1; /* Behind text */
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s;
+            mix-blend-mode: screen;
+        }
+
+        /* 2. Text Shimmer Animation */
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+
+        /* 3. Pulse Animation */
+        @keyframes borderPulse {
+            0% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); }
+            50% { box-shadow: 0 0 50px rgba(0, 242, 255, 0.5), 0 0 15px rgba(0, 242, 255, 0.8) inset; }
+            100% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); }
+        }
+
+        /* ============================
+           3D BACKGROUND CONTAINER
+           ============================ */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2; /* Behind everything including cursor light */
+            opacity: 0.8; /* Made slightly more visible for the wave effect */
+        }
+
+        /* ============================
+           INTRO OVERLAY
+           ============================ */
+        .intro-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000;
+            z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            animation: curtainCall 2.5s ease-in-out forwards;
+        }
+
+        .intro-text {
+            font-family: var(--font-main);
+            font-weight: 700;
+            font-size: 3rem;
+            letter-spacing: 10px;
+            color: #fff;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: textFadeIn 1.5s ease forwards 0.5s;
+        }
+
+        @keyframes textFadeIn { to { opacity: 1; transform: translateY(-20px); } }
+        @keyframes curtainCall { 
+            0% { opacity: 1; } 
+            75% { opacity: 1; } 
+            100% { opacity: 0; pointer-events: none; visibility: hidden; } 
+        }
+
+        /* ============================
+           SOCIAL SIDEBAR (Fixed Left)
+           ============================ */
+        .social-sidebar {
+            position: fixed;
+            left: 40px;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        .social-sidebar a {
+            color: var(--secondary-text);
+            font-size: 1.3rem;
+            transition: all 0.3s;
+        }
+
+        .social-sidebar a:hover {
+            color: var(--accent-color);
+            transform: translateY(-5px);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .social-line {
+            width: 1px;
+            height: 90px;
+            background-color: var(--secondary-text);
+            margin-top: 10px;
+        }
+
+        /* ============================
+           NAVIGATION
+           ============================ */
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 50px;
+            position: fixed; top: 0; width: 100%;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .logo {
+            font-family: var(--font-code);
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .nav-links { display: flex; gap: 30px; list-style: none; }
+        .nav-links a {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            font-family: var(--font-code);
+        }
+        .nav-links a:hover { color: var(--accent-color); }
+
+        /* ============================
+           HERO SECTION
+           ============================ */
+        .hero {
+            height: 100vh;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 0 15%; /* Indented to make room for sidebar */
+            position: relative;
+            z-index: 1; /* Ensure text is above light fx */
+        }
+
+        .hero h3 { font-family: var(--font-code); color: var(--accent-color); font-size: 1.1rem; margin-bottom: 15px; }
+        
+        .hero h1 { 
+            font-size: 4.5rem; 
+            font-weight: 700; 
+            line-height: 1.1; 
+            margin-bottom: 10px;
+            
+            /* Text Shimmer Effect */
+            background: linear-gradient(to right, #e0e0e0 20%, #00f2ff 50%, #e0e0e0 80%);
+            background-size: 200% auto;
+            color: #e0e0e0;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 5s linear infinite;
+        }
+        
+        .hero h2 { font-size: 3.5rem; font-weight: 700; color: var(--secondary-text); line-height: 1.1; margin-bottom: 20px; }
+        .hero p { max-width: 500px; color: var(--secondary-text); margin-bottom: 40px; font-size: 1.1rem; }
+        
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            border-radius: 4px;
+            font-family: var(--font-code);
+            transition: 0.3s;
+        }
+        .btn:hover { background: rgba(0, 242, 255, 0.1); box-shadow: 0 0 15px var(--accent-glow); }
+
+        /* ============================
+           SECTION STYLES
+           ============================ */
+        section { padding: 100px 15%; position: relative; z-index: 1; }
+        
+        .section-header {
+            display: flex; align-items: center; margin-bottom: 40px;
+        }
+        .section-header h2 {
+            font-size: 2rem; color: var(--text-color);
+            display: flex; align-items: center;
+        }
+        .section-header h2::before {
+            content: "0" counter(section) ".";
+            counter-increment: section;
+            margin-right: 10px; color: var(--accent-color); font-family: var(--font-code); font-size: 1.5rem;
+        }
+        .section-header .line {
+            flex-grow: 1; height: 1px; background: #333; margin-left: 20px; max-width: 300px;
+        }
+        
+        body { counter-reset: section; } /* Initialize counter */
+
+        /* ============================
+           ABOUT & SKILLS
+           ============================ */
+        .about-content { display: grid; grid-template-columns: 2fr 1fr; gap: 50px; }
+        .about-text p { color: var(--secondary-text); margin-bottom: 15px; }
+        
+        /* Profile Picture Styles */
+        .profile-pic-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .profile-pic {
+            width: 280px;
+            height: 280px;
+            object-fit: cover;
+            border-radius: 50%; /* Circle */
+            border: 2px solid var(--accent-color);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+            filter: grayscale(10%); /* Slight mute for cinematic feel */
+            transition: all 0.3s ease;
+            
+            /* Animation for Pulse */
+            animation: borderPulse 3s infinite ease-in-out;
+        }
+        .profile-pic:hover {
+            filter: grayscale(0%);
+            transform: scale(1.05);
+            animation: none; /* Stop pulsing on hover so the glow stays solid if you want, or keep it */
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.6);
+        }
+
+        .skills-container {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px;
+        }
+        .skill-category h4 { color: var(--accent-color); margin-bottom: 15px; font-family: var(--font-code); }
+        .skill-list { list-style: none; font-family: var(--font-code); font-size: 0.9rem; color: var(--secondary-text); }
+        .skill-list li::before { content: "▹"; color: var(--accent-color); margin-right: 10px; }
+
+        /* ============================
+           INSTAGRAM MOCK GRID
+           ============================ */
+        .insta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px; /* Standard Insta Gap */
+            margin-top: 30px;
+        }
+
+        .insta-item {
+            position: relative;
+            aspect-ratio: 1/1; /* Perfect Square */
+            overflow: hidden;
+            cursor: pointer;
+            background: #111;
+        }
+
+        .insta-item img {
+            width: 100%; height: 100%; object-fit: cover;
+            transition: transform 0.4s;
+        }
+
+        .insta-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; transition: 0.3s;
+            color: #fff; font-weight: bold; font-size: 1.2rem;
+        }
+
+        .insta-item:hover .insta-overlay { opacity: 1; }
+        .insta-item:hover img { transform: scale(1.1); }
+
+        /* ============================
+           CONTACT & FOOTER
+           ============================ */
+        .contact-box { text-align: center; max-width: 600px; margin: 0 auto; }
+        footer { text-align: center; padding: 20px; color: var(--secondary-text); font-family: var(--font-code); font-size: 0.8rem; }
+
+        /* ============================
+           MOBILE RESPONSIVENESS
+           ============================ */
+        @media (max-width: 768px) {
+            .social-sidebar { display: none; } /* Hide sidebar on mobile */
+            .hero, section { padding: 100px 20px; }
+            .hero h1 { font-size: 3rem; }
+            .hero h2 { font-size: 2rem; }
+            .about-content { grid-template-columns: 1fr; gap: 30px; }
+            .profile-pic-container { order: -1; /* Move image to top on mobile */ margin-bottom: 20px; }
+            .profile-pic { width: 200px; height: 200px; }
+            
+            .insta-grid { grid-template-columns: 1fr; gap: 20px; } /* Single column feed for mobile */
+            nav { padding: 20px; }
+            .nav-links { display: none; } /* Hide nav links for simple mobile view */
+            
+            /* Add Mobile Socials in Hero */
+            .mobile-socials { display: flex; gap: 20px; margin-top: 30px; justify-content: center;}
+            .mobile-socials a { color: var(--text-color); font-size: 1.5rem; }
+            
+            .cursor-light { display: none; } /* Disable cursor spotlight on mobile for performance */
+        }
+        
+        @media (min-width: 769px) { .mobile-socials { display: none; } }
+
+    </style>
+</head>
+<body>
+
+    <!-- 0. LIGHT FX -->
+    <div class="cursor-light"></div>
+
+    <!-- 1. INTRO ANIMATION -->
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-text">ADITYA RAY</div>
+    </div>
+
+    <!-- 2. 3D BACKGROUND CONTAINER -->
+    <div id="canvas-container"></div>
+
+    <!-- 3. SOCIAL SIDEBAR (DESKTOP) -->
+    <div class="social-sidebar">
+        <a href="https://github.com/adityaray-codes" target="_blank"><i class="fa-brands fa-github"></i></a>
+        <a href="https://www.instagram.com/roughhcopy/" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+        <a href="https://www.linkedin.com/in/aditya-kumar-ray-290b18326/" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+        <a href="mailto:adityaray5121@gmail.com"><i class="fa-regular fa-envelope"></i></a>
+        <div class="social-line"></div>
+    </div>
+
+    <!-- 4. NAVIGATION -->
+    <nav>
+        <!-- Logo removed as requested -->
+        <ul class="nav-links">
+            <li><a href="#about">01. About</a></li>
+            <li><a href="#gallery">02. Photography</a></li>
+            <li><a href="#projects">03. Projects</a></li>
+            <li><a href="#contact">04. Contact</a></li>
+        </ul>
+    </nav>
+
+    <!-- 5. HERO SECTION -->
+    <header class="hero">
+        <h3>Hi, my name is</h3>
+        <h1>Aditya Ray.</h1>
+        <h2>I bridge Lens & Logic.</h2>
+        <p>I am a CSE Student at Rungta College of Engineering and Technology, Bhilai. I combine algorithmic thinking with cinematic storytelling to create immersive digital experiences.</p>
+        
+        <!-- Mobile Socials (Only shows on phone) -->
+        <div class="mobile-socials">
+            <a href="https://github.com/adityaray-codes" target="_blank"><i class="fa-brands fa-github"></i></a>
+            <a href="https://www.instagram.com/roughhcopy/" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+            <a href="https://www.linkedin.com/in/aditya-kumar-ray-290b18326/" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+        </div>
+        
+        <!-- Button removed as requested -->
+    </header>
+
+    <!-- 6. ABOUT ME -->
+    <section id="about">
+        <div class="section-header">
+            <h2>About Me</h2><div class="line"></div>
+        </div>
+        <div class="about-content">
+            <div class="about-text">
+                <p>Hello! My name is Aditya and I enjoy creating things that live on the internet and capturing moments that live forever. My journey involves a dual passion for <strong>Computer Science</strong> and <strong>Cinematography</strong>.</p>
+                <p>Currently, I am a 2nd-year student at <strong>Rungta College of Engineering and Technology, Bhilai</strong>. When I'm not debugging code, I'm usually behind a camera lens, color grading footage, or exploring new perspectives.</p>
+                
+                <div class="skills-container">
+                    <div class="skill-category">
+                        <h4>Logic (CS)</h4>
+                        <ul class="skill-list">
+                            <li>Java / C++</li>
+                            <li>Python</li>
+                            <li>Web Development</li>
+                            <li>Data Structures</li>
+                        </ul>
+                    </div>
+                    <div class="skill-category">
+                        <h4>Lens (Creative)</h4>
+                        <ul class="skill-list">
+                            <li>Photography</li>
+                            <li>Cinematography</li>
+                            <li>Adobe Premiere Pro</li>
+                            <li>Color Grading</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profile Picture Section -->
+            <div class="profile-pic-container">
+                <!-- Updated source to simpler file name 'profile.jpeg' -->
+                <img src="profile.jpeg" alt="Aditya Ray" class="profile-pic">
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. PHOTOGRAPHY GALLERY (INSTAGRAM MOCK) -->
+    <section id="gallery">
+        <div class="section-header">
+            <h2>The Lens</h2><div class="line"></div>
+        </div>
+        <p style="color: var(--secondary-text); margin-bottom: 20px;">A curation of my recent captures. Follow me on <a href="https://www.instagram.com/roughhcopy/" style="color: var(--accent-color);">@roughhcopy</a>.</p>
+        
+        <div class="insta-grid" id="instaGrid">
+            <!-- Items injected via JS below -->
+        </div>
+    </section>
+
+    <!-- 8. CONTACT -->
+    <section id="contact">
+        <div class="contact-box">
+            <h3 style="color: var(--accent-color); font-family: var(--font-code);">04. What's Next?</h3>
+            <h2 style="font-size: 3rem; margin: 20px 0;">Get In Touch</h2>
+            <p style="color: var(--secondary-text); margin-bottom: 40px;">I am currently looking for internship opportunities in Tech or Media. Whether you have a question or just want to say hi, my inbox is always open!</p>
+            <a href="mailto:adityaray5121@gmail.com" class="btn">Say Hello</a>
+        </div>
+    </section>
+
+    <footer>
+        <p>Designed & Built by Aditya Ray</p>
+    </footer>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        // --- 1. SESSION STORAGE FOR INTRO ---
+        const overlay = document.getElementById('introOverlay');
+        if (sessionStorage.getItem('introSeen')) {
+            overlay.style.display = 'none';
+        } else {
+            sessionStorage.setItem('introSeen', 'true');
+            setTimeout(() => { overlay.style.display = 'none'; }, 2500);
+        }
+
+        // --- 2. CURSOR SPOTLIGHT TRACKING ---
+        const cursorLight = document.querySelector('.cursor-light');
+        document.addEventListener('mousemove', (e) => {
+            cursorLight.style.left = e.clientX + 'px';
+            cursorLight.style.top = e.clientY + 'px';
+        });
+
+        // --- 3. MOCK INSTAGRAM FEED GENERATOR ---
+        // REPLACE THESE IMAGES WITH YOUR REAL PHOTOS LATER
+        const posts = [
+            { img: 'https://picsum.photos/400/400?random=1', likes: '124' },
+            { img: 'https://picsum.photos/400/400?random=2', likes: '89' },
+            { img: 'https://picsum.photos/400/400?random=3', likes: '210' },
+            { img: 'https://picsum.photos/400/400?random=4', likes: '45' },
+            { img: 'https://picsum.photos/400/400?random=5', likes: '156' },
+            { img: 'https://picsum.photos/400/400?random=6', likes: '98' }
+        ];
+
+        const grid = document.getElementById('instaGrid');
+        posts.forEach(post => {
+            const div = document.createElement('div');
+            div.className = 'insta-item';
+            div.innerHTML = `
+                <img src="${post.img}" alt="Photography">
+                <div class="insta-overlay">
+                    <i class="fa-solid fa-heart"></i>&nbsp; ${post.likes}
+                </div>
+            `;
+            // Make clickable to your actual profile
+            div.onclick = () => window.open('https://www.instagram.com/roughhcopy/', '_blank');
+            grid.appendChild(div);
+        });
+
+        // --- 4. THREE.JS "LIVING WAVE" BACKGROUND ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Parameters
+        const SEPARATION = 1.5; // Distance between dots
+        const AMOUNTX = 60;     // Dots on X axis
+        const AMOUNTY = 60;     // Dots on Y (Z depth) axis
+
+        // Geometry
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(AMOUNTX * AMOUNTY * 3);
+        const scales = new Float32Array(AMOUNTX * AMOUNTY);
+
+        let i = 0;
+        let j = 0;
+
+        for (let ix = 0; ix < AMOUNTX; ix++) {
+            for (let iy = 0; iy < AMOUNTY; iy++) {
+                particlePositions[i] = ix * SEPARATION - ((AMOUNTX * SEPARATION) / 2); // X
+                particlePositions[i + 1] = 0; // Y (Height - will be animated)
+                particlePositions[i + 2] = iy * SEPARATION - ((AMOUNTY * SEPARATION) / 2); // Z
+                
+                scales[j] = 1;
+                
+                i += 3;
+                j++;
+            }
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particlesGeometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
+
+        // Material
+        const material = new THREE.PointsMaterial({
+            color: 0x00f2ff, // Cyan
+            size: 0.15,
+            transparent: true,
+            opacity: 0.7
+        });
+
+        // Mesh
+        const particles = new THREE.Points(particlesGeometry, material);
+        scene.add(particles);
+
+        camera.position.y = 15;
+        camera.position.z = 30;
+        camera.lookAt(0, 0, 0);
+
+        // Interaction
+        let mouseX = 0;
+        let mouseY = 0;
+        document.addEventListener('mousemove', (event) => {
+            mouseX = event.clientX - window.innerWidth / 2;
+            mouseY = event.clientY - window.innerHeight / 2;
+        });
+
+        // Animation Loop
+        let count = 0;
+        const animate = () => {
+            requestAnimationFrame(animate);
+
+            // Move camera slightly with mouse
+            camera.position.x += (mouseX * 0.01 - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY * 0.01 + 15 - camera.position.y) * 0.05; // Base height 15
+            camera.lookAt(scene.position);
+
+            const positions = particles.geometry.attributes.position.array;
+            
+            // Calculate Wave
+            let i = 0;
+            let j = 0;
+            for (let ix = 0; ix < AMOUNTX; ix++) {
+                for (let iy = 0; iy < AMOUNTY; iy++) {
+                    // Sine Wave Logic
+                    positions[i + 1] = (Math.sin((ix + count) * 0.3) * 2) + (Math.sin((iy + count) * 0.5) * 2);
+                    
+                    // Optional: Pulse size based on height
+                    // const scale = (Math.sin((ix + count) * 0.3) + 1) * 2 + (Math.sin((iy + count) * 0.5) + 1) * 2;
+                    // particles.geometry.attributes.scale.array[j] = scale * 0.5;
+
+                    i += 3;
+                    j++;
+                }
+            }
+
+            particles.geometry.attributes.position.needsUpdate = true;
+            // particles.geometry.attributes.scale.needsUpdate = true;
+
+            count += 0.05; // Speed of wave
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
